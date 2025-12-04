@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       sessionId: session.sessionId.substring(0, 8) + '...', // Partial ID for privacy
-      userId: session.userId.substring(0, 8) + '...',
+      userId: session.userId ? session.userId.substring(0, 8) + '...' : 'not set',
       createdAt: new Date(session.createdAt).toISOString(),
       message: 'Each browser session has a unique identity. Your notes are private to this session.',
     });

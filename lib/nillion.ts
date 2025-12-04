@@ -78,9 +78,10 @@ export async function getNillionClients(): Promise<NillionClients> {
   });
 
   // Create builder client
+  // Use type assertion to handle version conflict between @nillion/nuc and @nillion/secretvaults
   const builder = await SecretVaultBuilderClient.from({
     signer: builderSigner,
-    nilauthClient: nilauth,
+    nilauthClient: nilauth as any,
     dbs: nillionConfig.NILDB_NODES,
   });
 
