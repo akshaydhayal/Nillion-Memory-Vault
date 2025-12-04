@@ -112,21 +112,25 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <FileText className="w-6 h-6 text-primary-600" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Memory Vault Summary
-            </h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+        <div className="relative bg-gradient-to-r from-primary-500/10 via-purple-500/10 to-pink-500/10 dark:from-primary-900/20 dark:via-purple-900/20 dark:to-pink-900/20 p-6 border-b border-gray-200/50 dark:border-gray-700/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl shadow-lg">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-primary-600 to-purple-600 dark:from-white dark:via-primary-400 dark:to-purple-400 bg-clip-text text-transparent">
+                Memory Vault Summary
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-white/50 dark:hover:bg-gray-700/50 rounded-xl transition-all transform hover:scale-110"
+            >
+              <span className="text-2xl text-gray-600 dark:text-gray-400">×</span>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-          >
-            ×
-          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-6">
@@ -140,10 +144,12 @@ export default function SummaryPanel({ onClose }: SummaryPanelProps) {
           ) : (
             <div className="space-y-4">
               <div className="flex items-start gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
-                <h3 className="font-semibold text-gray-900 dark:text-white text-lg">Summary</h3>
+                <div className="p-1.5 bg-gradient-to-br from-primary-500 to-purple-500 rounded-lg">
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="font-bold text-gray-900 dark:text-white text-lg">Summary</h3>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-6">
+              <div className="bg-gradient-to-br from-primary-50 via-purple-50 to-pink-50 dark:from-primary-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-xl p-6 border border-primary-200/50 dark:border-primary-800/50 shadow-lg">
                 <MarkdownContent content={summary} />
               </div>
             </div>

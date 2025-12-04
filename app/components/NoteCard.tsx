@@ -38,73 +38,82 @@ export default function NoteCard({ note, onEdit, onDelete, onView }: NoteCardPro
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          {isTweet ? (
-            <Twitter className="w-5 h-5 text-blue-500" />
-          ) : (
-            <FileText className="w-5 h-5 text-primary-600" />
-          )}
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {note.title}
-          </h3>
-          {isTweet && (
-            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
-              Tweet
-            </span>
-          )}
+    <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 p-5 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+      {/* Decorative gradient blob */}
+      <div className={`absolute top-0 right-0 w-32 h-32 ${isTweet ? 'bg-gradient-to-br from-sky-400/20 to-blue-400/20' : 'bg-gradient-to-br from-primary-400/20 to-purple-400/20'} rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity`}></div>
+      
+      <div className="relative">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {isTweet ? (
+              <div className="p-2 bg-gradient-to-br from-sky-500 to-blue-500 rounded-lg shadow-md flex-shrink-0">
+                <Twitter className="w-4 h-4 text-white" />
+              </div>
+            ) : (
+              <div className="p-2 bg-gradient-to-br from-primary-500 to-purple-500 rounded-lg shadow-md flex-shrink-0">
+                <FileText className="w-4 h-4 text-white" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                {note.title}
+              </h3>
+              {isTweet && (
+                <span className="inline-block mt-1 px-2 py-0.5 bg-gradient-to-r from-sky-100 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 text-sky-700 dark:text-sky-300 rounded-full text-xs font-semibold">
+                  Tweet
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-1.5 ml-2">
+            <button
+              onClick={() => onView(note)}
+              className="p-2 text-gray-500 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-all transform hover:scale-110"
+              title="View full note"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => onEdit(note)}
+              className="p-2 text-gray-500 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-all transform hover:scale-110"
+              title="Edit note"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all transform hover:scale-110 disabled:opacity-50"
+              title="Delete note"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => onView(note)}
-            className="p-2 text-gray-500 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="View full note"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onEdit(note)}
-            className="p-2 text-gray-500 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-            title="Edit note"
-          >
-            <Edit className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="p-2 text-gray-600 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
-            title="Delete note"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
 
-      <p className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-3">
-        {note.content}
-      </p>
+        <p className="text-gray-700 dark:text-gray-300 mb-4 line-clamp-3 text-sm leading-relaxed">
+          {note.content}
+        </p>
 
-      <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200/50 dark:border-gray-700/50">
           <div className="flex items-center gap-1">
-            <Calendar className="w-4 h-4" />
-            <span>{format(new Date(note.updatedAt), 'MMM d, yyyy')}</span>
+            <Calendar className="w-3.5 h-3.5" />
+            <span className="font-medium">{format(new Date(note.updatedAt), 'MMM d, yyyy')}</span>
           </div>
           {note.tags && note.tags.length > 0 && (
-            <div className="flex items-center gap-1">
-              <Tag className="w-4 h-4" />
+            <div className="flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5" />
               <div className="flex gap-1">
-                {note.tags.slice(0, 3).map((tag, idx) => (
+                {note.tags.slice(0, 2).map((tag, idx) => (
                   <span
                     key={idx}
-                    className="px-2 py-0.5 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded text-xs"
+                    className="px-2 py-0.5 bg-gradient-to-r from-primary-100 to-purple-100 dark:from-primary-900/30 dark:to-purple-900/30 text-primary-700 dark:text-primary-300 rounded-full text-xs font-medium"
                   >
                     {tag}
                   </span>
                 ))}
-                {note.tags.length > 3 && (
-                  <span className="text-gray-500">+{note.tags.length - 3}</span>
+                {note.tags.length > 2 && (
+                  <span className="text-gray-500 font-medium">+{note.tags.length - 2}</span>
                 )}
               </div>
             </div>
