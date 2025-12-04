@@ -140,15 +140,15 @@ export async function summarizeNotes(notes: string[]): Promise<string> {
     messages: [
       {
         role: 'system',
-        content: 'You are a helpful assistant that creates concise summaries of user notes. Focus on key points and themes.',
+        content: 'You are a helpful assistant that creates organized summaries of user notes. For each note, create a clear section with the note title as a heading (## Title) followed by a concise summary of that note\'s key points. Group related notes together when appropriate, but always maintain clear separation between different notes using headings.',
       },
       {
         role: 'user',
-        content: `Summarize the following notes:\n\n${context}`,
+        content: `Create a well-organized summary of the following notes. For each note, use the format:\n\n## [Note Title]\n\n[Summary of key points from this note]\n\nSeparate different notes clearly with headings. Group related information when it makes sense, but keep each note distinct:\n\n${context}`,
       },
     ],
     temperature: 0.5,
-    max_tokens: 300,
+    max_tokens: 2000,
   });
 
   return response.choices[0]?.message?.content || 'Unable to generate summary.';

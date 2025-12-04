@@ -42,7 +42,7 @@ export default function SearchPanel({ onClose }: SearchPanelProps) {
           <div className="flex items-center gap-2">
             <Search className="w-6 h-6 text-primary-600" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-              AI Search
+              nilAI Search
             </h2>
           </div>
           <button

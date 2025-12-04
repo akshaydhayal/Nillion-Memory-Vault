@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, MessageCircle, FileText, Shield, Sparkles, Loader2, LogOut, User } from 'lucide-react';
 import NoteCard from './components/NoteCard';
 import AddMemoryModal from './components/AddMemoryModal';
+import ViewNoteModal from './components/ViewNoteModal';
 import SearchPanel from './components/SearchPanel';
 import QuestionPanel from './components/QuestionPanel';
 import SummaryPanel from './components/SummaryPanel';
@@ -18,6 +19,7 @@ export default function Home() {
   const [showQuestion, setShowQuestion] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [viewingNote, setViewingNote] = useState<Note | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -99,6 +101,10 @@ export default function Home() {
     setShowMemoryModal(true);
   };
 
+  const handleViewNote = (note: Note) => {
+    setViewingNote(note);
+  };
+
   const handleDeleteNote = (noteId: string) => {
     setNotes(notes.filter(note => note._id !== noteId));
   };
@@ -111,7 +117,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg">
@@ -166,14 +172,14 @@ export default function Home() {
             className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
           >
             <Plus className="w-5 h-5" />
-            Add Memory
+            Add Memory to nilDB
           </button>
           <button
             onClick={() => setShowSearch(true)}
             className="px-6 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
           >
             <Search className="w-5 h-5" />
-            AI Search
+            nilAI Search
           </button>
           <button
             onClick={() => setShowQuestion(true)}
@@ -192,47 +198,47 @@ export default function Home() {
         </div>
 
         {/* Stats */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary-100 dark:bg-primary-900 rounded-lg">
-                <FileText className="w-6 h-6 text-primary-600 dark:text-primary-400" />
+        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-primary-100 dark:bg-primary-900 rounded-lg">
+                <FileText className="w-4 h-4 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-lg font-bold text-gray-900 dark:text-white">
                   {notes.length}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   Total Notes
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <Shield className="w-4 h-4 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-lg font-bold text-gray-900 dark:text-white">
                   Encrypted
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   All Data
                 </p>
               </div>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                <p className="text-lg font-bold text-gray-900 dark:text-white">
                   AI-Powered
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   Private LLM
                 </p>
               </div>
@@ -270,6 +276,7 @@ export default function Home() {
                 note={note}
                 onEdit={handleEditNote}
                 onDelete={handleDeleteNote}
+                onView={handleViewNote}
               />
             ))}
           </div>
@@ -304,6 +311,13 @@ export default function Home() {
         <LoginModal
           onClose={() => setShowLogin(false)}
           onLogin={handleLogin}
+        />
+      )}
+
+      {viewingNote && (
+        <ViewNoteModal
+          note={viewingNote}
+          onClose={() => setViewingNote(null)}
         />
       )}
 

@@ -2,16 +2,17 @@
 
 import { Note } from '@/types';
 import { format } from 'date-fns';
-import { FileText, Calendar, Tag, Trash2, Edit, Twitter } from 'lucide-react';
+import { FileText, Calendar, Tag, Trash2, Edit, Twitter, Eye } from 'lucide-react';
 import { useState } from 'react';
 
 interface NoteCardProps {
   note: Note;
   onEdit: (note: Note) => void;
   onDelete: (noteId: string) => void;
+  onView: (note: Note) => void;
 }
 
-export default function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
+export default function NoteCard({ note, onEdit, onDelete, onView }: NoteCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   
   // Check if this is a tweet (has 'tweet' tag or contains tweet URL)
@@ -56,8 +57,15 @@ export default function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => onView(note)}
+            className="p-2 text-gray-500 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            title="View full note"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => onEdit(note)}
-            className="p-2 text-gray-600 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+            className="p-2 text-gray-500 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
             title="Edit note"
           >
             <Edit className="w-4 h-4" />

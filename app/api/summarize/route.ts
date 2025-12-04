@@ -11,9 +11,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Extract note content
+    // Extract note content with clear structure
     const noteTexts = notes.map(note => 
-      `Title: ${note.title}\nContent: ${note.content}`
+      `NOTE: "${note.title}"\n\n${note.content}`
     );
 
     // Dynamically import summarizeNotes to avoid module conflicts
