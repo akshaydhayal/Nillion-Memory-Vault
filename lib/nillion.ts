@@ -11,6 +11,7 @@ import {
 } from '@nillion/secretvaults';
 import { nillionConfig } from './config';
 import { getUserSignerForSession } from './user-storage-session';
+import { getUserSignerForAuthenticatedUser } from './user-storage-auth';
 import { getSession } from './session';
 
 export interface NillionClients {
@@ -40,7 +41,25 @@ export async function getNillionClients(): Promise<NillionClients> {
 
   // Create signers
   const builderSigner = Signer.fromPrivateKey(nillionConfig.BUILDER_PRIVATE_KEY);
-  const userSigner = getUserSignerForSession(session.sessionId); // Use session-based user signer
+  
+  // Try to get authenticated user signer first, fallback to session-based
+  let userSigner: Signer;
+  if (session.isAuthenticated && session.userId) {
+    console.log(`getNillionClients: User is authenticated, userId: ${session.userId}`);
+    const authSigner = await getUserSignerForAuthenticatedUser();
+    if (authSigner) {
+      console.log('getNillionClients: Using authenticated user signer');
+      userSigner = authSigner;
+    } else {
+      console.warn('getNillionClients: Auth signer not found, falling back to session-based');
+      // Fallback to session-based if auth signer not found
+      userSigner = getUserSignerForSession(session.sessionId);
+    }
+  } else {
+    console.log('getNillionClients: User not authenticated, using session-based signer');
+    // Not authenticated, use session-based signer
+    userSigner = getUserSignerForSession(session.sessionId);
+  }
 
   const builderDid = await builderSigner.getDid();
   const userDid = await userSigner.getDid();

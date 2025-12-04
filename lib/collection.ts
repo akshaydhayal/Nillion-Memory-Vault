@@ -372,22 +372,68 @@ export async function getNote(noteId: string): Promise<NoteDisplay | null> {
 }
 
 export async function listNotes(): Promise<NoteDisplay[]> {
-  const { user } = await getNillionClients();
+  console.log('listNotes: Getting Nillion clients...');
+  const { user, userDid } = await getNillionClients();
+  console.log(`listNotes: Got user client for DID: ${userDid}`);
 
   try {
-    const references = await user.listDataReferences();
+    console.log('listNotes: Starting listDataReferences...');
+    
+    // Add timeout for listDataReferences (10 seconds)
+    const listTimeout = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        console.error('listNotes: listDataReferences TIMEOUT after 10 seconds');
+        reject(new Error('listDataReferences timeout'));
+      }, 10000);
+    });
+
+    console.log('listNotes: Calling user.listDataReferences()...');
+    const listPromise = user.listDataReferences().then((result) => {
+      console.log('listNotes: listDataReferences completed successfully');
+      return result;
+    }).catch((error) => {
+      console.error('listNotes: listDataReferences error:', error);
+      throw error;
+    });
+    
+    console.log('listNotes: Racing listDataReferences with timeout...');
+    let references;
+    try {
+      references = await Promise.race([listPromise, listTimeout]);
+      console.log(`listNotes: Found ${references.data?.length || 0} data references`);
+    } catch (raceError: any) {
+      console.error('listNotes: Promise.race error:', raceError);
+      if (raceError.message?.includes('timeout')) {
+        console.warn('listNotes: Timeout occurred, returning empty array');
+        return [];
+      }
+      throw raceError;
+    }
+    
     const notes: NoteDisplay[] = [];
 
-    for (const ref of references.data) {
+    // Process references with individual timeouts
+    const notePromises: Promise<NoteDisplay | null>[] = [];
+    for (const ref of references.data || []) {
       if (ref.collection === MEMORY_VAULT_COLLECTION_ID) {
-        try {
-          const note = await getNote(ref.document);
-          if (note) {
-            notes.push(note);
-          }
-        } catch (error) {
-          console.error(`Error fetching note ${ref.document}:`, error);
-        }
+        // Add timeout for each note fetch (5 seconds)
+        const notePromise: Promise<NoteDisplay | null> = Promise.race([
+          getNote(ref.document),
+          new Promise<null>((_, reject) => 
+            setTimeout(() => reject(new Error('getNote timeout')), 5000)
+          )
+        ]).catch((error) => {
+          console.error(`Error fetching note ${ref.document}:`, error.message || error);
+          return null;
+        });
+        notePromises.push(notePromise);
+      }
+    }
+
+    const fetchedNotes = await Promise.all(notePromises);
+    for (const note of fetchedNotes) {
+      if (note) {
+        notes.push(note);
       }
     }
 
@@ -396,6 +442,16 @@ export async function listNotes(): Promise<NoteDisplay[]> {
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
   } catch (error: any) {
+    console.error('listNotes: Caught error:', error);
+    console.error('listNotes: Error message:', error.message);
+    console.error('listNotes: Error stack:', error.stack);
+    
+    // Handle timeout errors gracefully
+    if (error.message?.includes('timeout')) {
+      console.warn('listNotes: Notes listing timed out, returning empty array');
+      return [];
+    }
+
     // Handle 401 Unauthorized - this is normal if no data exists yet
     // Suppress these errors as they're expected when the vault is empty
     if (error.errors && Array.isArray(error.errors)) {

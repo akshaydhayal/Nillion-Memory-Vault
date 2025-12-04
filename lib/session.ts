@@ -7,7 +7,10 @@ const SESSION_DURATION = 60 * 60 * 24 * 30; // 30 days
 
 export interface Session {
   sessionId: string;
-  userId: string;
+  userId?: string; // User ID from database (if logged in)
+  userDid?: string; // User DID (if logged in)
+  email?: string; // User email (if logged in)
+  isAuthenticated: boolean;
   createdAt: number;
 }
 
@@ -25,7 +28,7 @@ export async function getSession(): Promise<Session> {
       try {
         const session: Session = JSON.parse(sessionCookie.value);
         // Verify session is still valid
-        if (session.sessionId && session.userId) {
+        if (session.sessionId) {
           return session;
         }
       } catch (error) {
@@ -33,10 +36,10 @@ export async function getSession(): Promise<Session> {
       }
     }
 
-    // Create new session
+    // Create new anonymous session (not logged in)
     const newSession: Session = {
       sessionId: randomUUID(),
-      userId: randomUUID(), // Unique user ID for this session
+      isAuthenticated: false,
       createdAt: Date.now(),
     };
 
@@ -55,7 +58,7 @@ export async function getSession(): Promise<Session> {
     console.warn('Could not access cookies, creating temporary session:', error);
     return {
       sessionId: randomUUID(),
-      userId: randomUUID(),
+      isAuthenticated: false,
       createdAt: Date.now(),
     };
   }

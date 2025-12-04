@@ -15,12 +15,29 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ note });
     }
 
-    const notes = await listNotes();
+    console.log('GET /api/notes: Starting to fetch notes...');
+    
+    // Add timeout to prevent hanging (30 seconds)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout: Notes fetch took too long')), 30000);
+    });
+
+    const notesPromise = listNotes();
+    const notes = await Promise.race([notesPromise, timeoutPromise]) as Awaited<ReturnType<typeof listNotes>>;
+    
+    console.log(`GET /api/notes: Successfully fetched ${notes.length} notes`);
     return NextResponse.json({ notes });
   } catch (error: any) {
     console.error('Error in GET /api/notes:', error);
+    
+    // If timeout, return empty array instead of error
+    if (error.message?.includes('timeout')) {
+      console.warn('Notes fetch timed out, returning empty array');
+      return NextResponse.json({ notes: [] });
+    }
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch notes' },
+      { error: error.message || 'Failed to fetch notes', notes: [] },
       { status: 500 }
     );
   }

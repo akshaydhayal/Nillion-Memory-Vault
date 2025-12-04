@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Search, MessageCircle, FileText, Shield, Sparkles, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Search, MessageCircle, FileText, Shield, Sparkles, Loader2, LogOut, User } from 'lucide-react';
 import NoteCard from './components/NoteCard';
 import NoteEditor from './components/NoteEditor';
 import SearchPanel from './components/SearchPanel';
 import QuestionPanel from './components/QuestionPanel';
 import SummaryPanel from './components/SummaryPanel';
+import LoginModal from './components/LoginModal';
 import { Note } from '@/types';
 
 export default function Home() {
@@ -17,20 +18,57 @@ export default function Home() {
   const [showQuestion, setShowQuestion] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [sessionInfo, setSessionInfo] = useState<{ message?: string } | null>(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
-    loadNotes();
-    loadSessionInfo();
+    // Prevent double execution in React StrictMode
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
+
+    // Only check auth on mount, don't load notes yet
+    checkAuth();
   }, []);
 
-  const loadSessionInfo = async () => {
+  const checkAuth = async () => {
     try {
-      const response = await fetch('/api/session');
+      const response = await fetch('/api/auth/me');
       const data = await response.json();
-      setSessionInfo(data);
+      if (data.isAuthenticated) {
+        setIsAuthenticated(true);
+        setUserEmail(data.email);
+        // Only load notes after authentication is confirmed
+        loadNotes();
+      } else {
+        setIsAuthenticated(false);
+        setUserEmail(null);
+        setNotes([]); // Clear notes if not authenticated
+        setIsLoading(false);
+      }
     } catch (error) {
-      console.error('Error loading session info:', error);
+      console.error('Error checking auth:', error);
+      setIsAuthenticated(false);
+      setUserEmail(null);
+      setIsLoading(false);
+    }
+  };
+
+  const handleLogin = () => {
+    // checkAuth() will call loadNotes() if authenticated, so no need to call it separately
+    checkAuth();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      setIsAuthenticated(false);
+      setUserEmail(null);
+      setNotes([]); // Clear notes
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error logging out:', error);
     }
   };
 
@@ -85,9 +123,28 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium" title={sessionInfo?.message || 'Your notes are private to this session'}>
-                🔐 Private Session
-              </div>
+              {isAuthenticated ? (
+                <>
+                  <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    {userEmail}
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1 transition-colors"
+                  >
+                    <LogOut className="w-3 h-3" />
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowLogin(true)}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                >
+                  Login / Register
+                </button>
+              )}
               <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
                 🔒 Encrypted
               </div>
@@ -237,6 +294,13 @@ export default function Home() {
 
       {showSummary && (
         <SummaryPanel onClose={() => setShowSummary(false)} />
+      )}
+
+      {showLogin && (
+        <LoginModal
+          onClose={() => setShowLogin(false)}
+          onLogin={handleLogin}
+        />
       )}
 
       {/* Footer */}
