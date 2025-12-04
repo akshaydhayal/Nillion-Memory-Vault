@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listNotes } from '@/lib/collection';
-import { summarizeNotes } from '@/lib/nilai';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +16,8 @@ export async function POST(request: NextRequest) {
       `Title: ${note.title}\nContent: ${note.content}`
     );
 
-    // Use nilAI to summarize
+    // Dynamically import summarizeNotes to avoid module conflicts
+    const { summarizeNotes } = await import('@/lib/nilai');
     const summary = await summarizeNotes(noteTexts);
 
     return NextResponse.json({ summary });

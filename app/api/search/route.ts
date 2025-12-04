@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listNotes } from '@/lib/collection';
-import { searchNotes } from '@/lib/nilai';
 import { SearchRequest } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -29,7 +28,9 @@ export async function POST(request: NextRequest) {
       `Title: ${note.title}\nContent: ${note.content}`
     );
 
-    // Use nilAI to search through notes
+    // Dynamically import searchNotes to avoid module conflicts
+    // This prevents @nillion/nilai-ts from conflicting with @nillion/nuc
+    const { searchNotes } = await import('@/lib/nilai');
     const result = await searchNotes(query, noteTexts);
 
     return NextResponse.json({ result });

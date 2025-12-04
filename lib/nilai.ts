@@ -1,8 +1,10 @@
+// Use dynamic import to avoid module initialization conflicts with @nillion/nuc
+// @nillion/nilai-ts has its own bundled @nillion/nuc which conflicts with direct imports
 import { nillionConfig } from './config';
 
 // Available models on Nillion testnet (check docs for latest)
-// Default: meta-llama/Llama-3.1-8B-Instruct
-// Other models may require special access
+// Default: google/gemma-3-27b-it
+// Other models: meta-llama/Llama-3.1-8B-Instruct, etc.
 
 export interface NilAIRequest {
   model: string;
@@ -35,30 +37,77 @@ export interface NilAIResponse {
 }
 
 export async function callNilAI(request: NilAIRequest): Promise<NilAIResponse> {
-  if (!nillionConfig.NILAI_API_KEY) {
-    throw new Error('NILAI_API_KEY is required. Please set it in your .env file.');
+  const apiKey = nillionConfig.NILLION_API_KEY;
+  if (!apiKey) {
+    throw new Error('NILLION_API_KEY is required. Please set it in your .env file. Get it from https://nilpay.vercel.app/');
   }
 
-  const response = await fetch(`${nillionConfig.NILAI_BASE_URL}/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${nillionConfig.NILAI_API_KEY}`,
-    },
-    body: JSON.stringify({
+  console.log('callNilAI: Initializing nilAI client...');
+  console.log(`callNilAI: Base URL: ${nillionConfig.NILAI_BASE_URL}`);
+  console.log(`callNilAI: Model: ${request.model || nillionConfig.NILAI_MODEL}`);
+  console.log(`callNilAI: API Key present: ${!!apiKey} (length: ${apiKey.length})`);
+  console.log(`callNilAI: API Key first 10 chars: ${apiKey.substring(0, 10)}...`);
+  console.log(`callNilAI: NILAUTH_URL: ${nillionConfig.NILAUTH_URL}`);
+
+  try {
+    // Dynamically import nilAI client to avoid module conflicts with @nillion/nuc
+    const { NilaiOpenAIClient, NilAuthInstance } = await import('@nillion/nilai-ts');
+    
+    // Initialize the nilAI OpenAI client
+    // The API key should be sufficient - it contains subscription info
+    // According to docs, we only need baseURL, apiKey, and nilauthInstance
+    const client = new NilaiOpenAIClient({
+      baseURL: nillionConfig.NILAI_BASE_URL,
+      apiKey: apiKey,
+      nilauthInstance: NilAuthInstance.SANDBOX,
+    });
+
+    console.log('callNilAI: Client initialized, making request...');
+
+    // Make a request to the Nilai API
+    const response = await client.chat.completions.create({
       model: request.model || nillionConfig.NILAI_MODEL,
       messages: request.messages,
       temperature: request.temperature ?? 0.7,
       max_tokens: request.max_tokens ?? 2000,
-    }),
-  });
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`NilAI API error: ${error}`);
+    console.log('callNilAI: Request completed successfully');
+    return response as unknown as NilAIResponse;
+  } catch (error: any) {
+    console.error('callNilAI: Error details:', error);
+    console.error('callNilAI: Error message:', error.message);
+    console.error('callNilAI: Error cause:', error.cause);
+    console.error('callNilAI: Full error:', JSON.stringify(error, null, 2));
+    
+    // Check if it's a subscription error
+    if (error.message?.includes('NOT_SUBSCRIBED') || 
+        error.message?.includes('not subscribed') ||
+        error.cause?.message?.includes('NOT_SUBSCRIBED') ||
+        error.cause?.message?.includes('not subscribed')) {
+      
+      const detailedError = `
+Your NILLION_API_KEY does not have an active nilAI subscription.
+
+Troubleshooting steps:
+1. Visit https://nilpay.vercel.app/ and verify you have an ACTIVE subscription to nilAI (not just nilDB)
+2. Make sure your subscription hasn't expired
+3. Verify you copied the nilAI API key (not the nilDB private key)
+4. The API key should be from the nilAI subscription page, not nilDB
+5. Try refreshing your subscription or re-subscribing if needed
+
+Error details:
+- Status: ${error.cause?.status || 'unknown'}
+- URL: ${error.cause?.url || 'unknown'}
+- Message: ${error.message || error.cause?.message || 'Unknown error'}
+      `.trim();
+      
+      throw new Error(detailedError);
+    }
+    
+    // Re-throw other errors with more context
+    throw new Error(`nilAI API error: ${error.message || JSON.stringify(error)}`);
   }
-
-  return response.json();
 }
 
 export async function searchNotes(query: string, notes: string[]): Promise<string> {

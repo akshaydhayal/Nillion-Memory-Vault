@@ -13,12 +13,16 @@ export const nillionConfig = {
         'https://nildb-stg-n3.nillion.network',
       ],
   BUILDER_PRIVATE_KEY: process.env.BUILDER_PRIVATE_KEY || '',
-  NILAI_API_KEY: process.env.NILAI_API_KEY || '',
-  NILAI_BASE_URL: process.env.NILAI_BASE_URL || 'https://nilai-api.nillion.network',
-  NILAI_MODEL: process.env.NILAI_MODEL || 'meta-llama/Llama-3.1-8B-Instruct',
+  NILLION_API_KEY: process.env.NILLION_API_KEY || process.env.NILAI_API_KEY || '', // Support both names
+  NILAI_BASE_URL: process.env.NILAI_BASE_URL || 'https://nilai-a779.nillion.network/v1/',
+  NILAI_MODEL: process.env.NILAI_MODEL || 'google/gemma-3-27b-it',
 };
 
 if (!nillionConfig.BUILDER_PRIVATE_KEY) {
   console.warn('⚠️ BUILDER_PRIVATE_KEY not set in environment variables');
+}
+
+if (!nillionConfig.NILLION_API_KEY) {
+  console.warn('⚠️ NILLION_API_KEY not set - AI features (search, Q&A, summarize) will not work');
 }
 

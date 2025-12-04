@@ -10,6 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@nillion/nilai-ts": "^0.2.0",
     "@nillion/nuc": "latest",
     "@nillion/secretvaults": "latest",
     "@types/bcryptjs": "^2.4.6",

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { listNotes } from '@/lib/collection';
-import { answerQuestion } from '@/lib/nilai';
 import { QuestionRequest } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -31,7 +30,8 @@ export async function POST(request: NextRequest) {
 
     const context = noteTexts.join('\n\n---\n\n');
 
-    // Use nilAI to answer the question with context
+    // Dynamically import answerQuestion to avoid module conflicts
+    const { answerQuestion } = await import('@/lib/nilai');
     const answer = await answerQuestion(question, context);
 
     return NextResponse.json({ answer });

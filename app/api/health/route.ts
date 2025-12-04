@@ -7,7 +7,7 @@ export async function GET() {
     timestamp: new Date().toISOString(),
     config: {
       hasBuilderKey: !!nillionConfig.BUILDER_PRIVATE_KEY,
-      hasNilAIKey: !!nillionConfig.NILAI_API_KEY,
+      hasNilAIKey: !!nillionConfig.NILLION_API_KEY,
       nildbNodes: nillionConfig.NILDB_NODES.length,
     },
   };
