@@ -1,24 +1,25 @@
 import {
-  Keypair,
+  Signer,
   NilauthClient,
   PayerBuilder,
-  NucTokenBuilder,
-  Command,
+  Builder,
+  Codec,
 } from '@nillion/nuc';
 import {
   SecretVaultBuilderClient,
   SecretVaultUserClient,
 } from '@nillion/secretvaults';
 import { nillionConfig } from './config';
-import { getUserKeypair } from './user-storage';
+import { getUserSigner } from './user-storage';
 
 export interface NillionClients {
   builder: SecretVaultBuilderClient;
   user: SecretVaultUserClient;
-  builderKeypair: Keypair;
-  userKeypair: Keypair;
+  builderSigner: Signer;
+  userSigner: Signer;
   builderDid: string;
   userDid: string;
+  userDidObject: any; // DID object for delegation
 }
 
 let cachedClients: NillionClients | null = null;
@@ -32,29 +33,31 @@ export async function getNillionClients(): Promise<NillionClients> {
     throw new Error('BUILDER_PRIVATE_KEY is required. Please set it in your .env file.');
   }
 
-  // Create keypairs
-  const builderKeypair = Keypair.from(nillionConfig.BUILDER_PRIVATE_KEY);
-  const userKeypair = getUserKeypair(); // Use persistent user keypair
+  // Create signers
+  const builderSigner = Signer.fromPrivateKey(nillionConfig.BUILDER_PRIVATE_KEY);
+  const userSigner = getUserSigner(); // Use persistent user signer
 
-  const builderDid = builderKeypair.toDid().toString();
-  const userDid = userKeypair.toDid().toString();
+  const builderDid = await builderSigner.getDid();
+  const userDid = await userSigner.getDid();
+
+  const builderDidString = builderDid.didString;
+  const userDidString = userDid.didString;
 
   // Create payer and nilauth client
-  const payer = await new PayerBuilder()
-    .keypair(builderKeypair)
+  const payer = await PayerBuilder.fromPrivateKey(nillionConfig.BUILDER_PRIVATE_KEY)
     .chainUrl(nillionConfig.NILCHAIN_URL)
     .build();
 
-  const nilauth = await NilauthClient.from(nillionConfig.NILAUTH_URL, payer);
+  const nilauth = await NilauthClient.create({
+    baseUrl: nillionConfig.NILAUTH_URL,
+    payer: payer,
+  });
 
   // Create builder client
   const builder = await SecretVaultBuilderClient.from({
-    keypair: builderKeypair,
-    urls: {
-      chain: nillionConfig.NILCHAIN_URL,
-      auth: nillionConfig.NILAUTH_URL,
-      dbs: nillionConfig.NILDB_NODES,
-    },
+    signer: builderSigner,
+    nilauthClient: nilauth,
+    dbs: nillionConfig.NILDB_NODES,
   });
 
   // Refresh token using existing subscription
@@ -62,15 +65,20 @@ export async function getNillionClients(): Promise<NillionClients> {
 
   // Register builder if not already registered
   try {
-    await builder.readProfile();
+    const existingProfile = await builder.readProfile();
+    console.log('✅ Builder already registered:', existingProfile.data.name);
   } catch (profileError) {
     try {
       await builder.register({
-        did: builderDid,
+        did: builderDidString,
         name: 'MemoryVault Builder',
       });
+      console.log('✅ Builder registered successfully');
     } catch (registerError: any) {
-      if (!registerError.message.includes('duplicate key')) {
+      // Handle duplicate key errors gracefully
+      if (registerError.message?.includes('duplicate key')) {
+        console.log('✅ Builder already registered (duplicate key)');
+      } else {
         throw registerError;
       }
     }
@@ -78,8 +86,8 @@ export async function getNillionClients(): Promise<NillionClients> {
 
   // Create user client
   const user = await SecretVaultUserClient.from({
+    signer: userSigner,
     baseUrls: nillionConfig.NILDB_NODES,
-    keypair: userKeypair,
     blindfold: {
       operation: 'store',
     },
@@ -88,10 +96,11 @@ export async function getNillionClients(): Promise<NillionClients> {
   cachedClients = {
     builder,
     user,
-    builderKeypair,
-    userKeypair,
-    builderDid,
-    userDid,
+    builderSigner,
+    userSigner,
+    builderDid: builderDidString,
+    userDid: userDidString,
+    userDidObject: userDid,
   };
 
   return cachedClients;
@@ -99,14 +108,16 @@ export async function getNillionClients(): Promise<NillionClients> {
 
 export async function createDelegation(
   builder: SecretVaultBuilderClient,
-  builderKeypair: Keypair,
-  userDid: string,
+  builderSigner: Signer,
+  userDid: any,
   expiresInSeconds: number = 3600
-) {
-  return NucTokenBuilder.extending(builder.rootToken)
-    .command(new Command(['nil', 'db', 'data', 'create']))
+): Promise<string> {
+  const delegation = await Builder.delegationFrom(builder.rootToken)
+    .command('/nil/db/data/create')
     .audience(userDid)
-    .expiresAt(Math.floor(Date.now() / 1000) + expiresInSeconds)
-    .build(builderKeypair.privateKey());
+    .expiresAt(Date.now() + expiresInSeconds * 1000) // milliseconds
+    .sign(builderSigner);
+
+  return Codec.serializeBase64Url(delegation);
 }
 

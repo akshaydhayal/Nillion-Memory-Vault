@@ -26,8 +26,11 @@ yarn-error.log*
 .env*.local
 .env
 
-# user keypair storage
-.user-keypair.json
+# user signer storage
+.user-signer.json
+
+# collection ID storage
+.collection-id.json
 
 # vercel
 .vercel

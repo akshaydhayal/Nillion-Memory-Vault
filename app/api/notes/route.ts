@@ -41,9 +41,31 @@ export async function POST(request: NextRequest) {
     const noteId = await createNote(title, content, tags || []);
     return NextResponse.json({ noteId, success: true });
   } catch (error: any) {
-    console.error('Error in POST /api/notes:', error);
+    // Log detailed error information
+    console.error('Error in POST /api/notes:');
+    
+    // Log the full error structure with proper stringification
+    if (error.errors && Array.isArray(error.errors)) {
+      error.errors.forEach((nodeError: any, index: number) => {
+        const errorBody = nodeError.error?.body;
+        const status = nodeError.error?.status;
+        const errorMsg = typeof errorBody === 'object' 
+          ? JSON.stringify(errorBody, null, 2) 
+          : errorBody || nodeError.error?.message || 'Unknown error';
+        console.error(`  API Route - Node ${index + 1} (status ${status}):`, errorMsg);
+      });
+    } else {
+      // Try to stringify the whole error
+      try {
+        console.error('  Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      } catch {
+        console.error('  Error message:', error.message || error);
+        console.error('  Error stack:', error.stack);
+      }
+    }
+    
     return NextResponse.json(
-      { error: error.message || 'Failed to create note' },
+      { error: error.message || 'Failed to create note. The collection may need to be created first.' },
       { status: 500 }
     );
   }
