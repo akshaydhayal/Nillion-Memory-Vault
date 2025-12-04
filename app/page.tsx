@@ -266,11 +266,14 @@ export default function Home() {
 
         {/* Notes Grid */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-primary-400 to-purple-400 rounded-full blur-xl opacity-50 animate-pulse"></div>
               <Loader2 className="w-12 h-12 text-primary-600 dark:text-primary-400 animate-spin relative" />
             </div>
+            <p className="text-gray-600 dark:text-gray-400 font-medium text-lg">
+              Please wait, loading your memories and notes...
+            </p>
           </div>
         ) : notes.length === 0 ? (
           <div className="relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-2xl p-16 text-center border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">

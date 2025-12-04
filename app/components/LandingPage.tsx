@@ -1,6 +1,6 @@
 'use client';
 
-import { Shield, Lock, Sparkles, Database, Search, MessageCircle, ArrowRight, Check, FileText, Twitter, Plus } from 'lucide-react';
+import { Shield, Lock, Sparkles, Database, Search, MessageCircle, ArrowRight, Check, FileText, Twitter, Code, Bookmark } from 'lucide-react';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -99,42 +99,52 @@ export default function LandingPage({ onGetStarted }: LandingPageProps) {
 
         {/* What You Can Save - Compact Infographics */}
         <div className="mb-6">
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Text Notes */}
-            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-2xl"></div>
-              <div className="relative flex items-center gap-4">
-                <div className="p-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl shadow-lg">
-                  <FileText className="w-8 h-8 text-white" />
+            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-2xl"></div>
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-md mb-3">
+                  <FileText className="w-6 h-6 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Text Notes</h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Create & store encrypted notes</p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">Thoughts</span>
-                    <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">Research</span>
-                    <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">Memories</span>
-                  </div>
-                </div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Text Notes</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Encrypted notes</p>
               </div>
             </div>
 
             {/* Tweets */}
-            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-5 shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-sky-400/20 to-blue-400/20 rounded-full blur-2xl"></div>
-              <div className="relative flex items-center gap-4">
-                <div className="p-4 bg-gradient-to-br from-sky-500 to-blue-500 rounded-xl shadow-lg">
-                  <Twitter className="w-8 h-8 text-white" />
+            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-sky-400/20 to-blue-400/20 rounded-full blur-2xl"></div>
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-br from-sky-500 to-blue-500 rounded-lg shadow-md mb-3">
+                  <Twitter className="w-6 h-6 text-white" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Save Tweets</h3>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Paste URL to archive tweets</p>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 rounded-full">Auto-fetch</span>
-                    <span className="text-xs px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 rounded-full">Full context</span>
-                    <span className="text-xs px-2 py-1 bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 rounded-full">Encrypted</span>
-                  </div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Save Tweets</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Archive tweets</p>
+              </div>
+            </div>
+
+            {/* Code Snippets */}
+            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 rounded-full blur-2xl"></div>
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-lg shadow-md mb-3">
+                  <Code className="w-6 h-6 text-white" />
                 </div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Code Snippets</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Save code</p>
+              </div>
+            </div>
+
+            {/* Bookmarks */}
+            <div className="group relative bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl p-4 shadow-lg hover:shadow-2xl transition-all transform hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-full blur-2xl"></div>
+              <div className="relative">
+                <div className="p-3 bg-gradient-to-br from-orange-500 to-red-500 rounded-lg shadow-md mb-3">
+                  <Bookmark className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1">Bookmarks</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400">Save articles</p>
               </div>
             </div>
           </div>

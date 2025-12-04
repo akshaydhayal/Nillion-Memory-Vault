@@ -1,8 +1,9 @@
 'use client';
 
 import { Note } from '@/types';
-import { X, FileText, Twitter, Calendar, Tag, ExternalLink } from 'lucide-react';
+import { X, FileText, Twitter, Calendar, Tag, ExternalLink, Code, Bookmark, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
+import { useState } from 'react';
 
 interface ViewNoteModalProps {
   note: Note;
@@ -10,12 +11,25 @@ interface ViewNoteModalProps {
 }
 
 export default function ViewNoteModal({ note, onClose }: ViewNoteModalProps) {
-  // Check if this is a tweet
+  const [copied, setCopied] = useState(false);
+
+  // Check note type
   const isTweet = note.tags?.includes('tweet') || note.content?.includes('Tweet URL:');
+  const isCode = note.tags?.includes('code') || note.content?.includes('```');
+  const isBookmark = note.tags?.includes('bookmark') || note.content?.includes('Bookmark URL:');
   
   // Extract tweet URL if it's a tweet
   const tweetUrlMatch = note.content?.match(/Tweet URL:\s*(https?:\/\/[^\s]+)/);
   const tweetUrl = tweetUrlMatch ? tweetUrlMatch[1] : null;
+  
+  // Extract bookmark URL
+  const bookmarkUrlMatch = note.content?.match(/Bookmark URL:\s*(https?:\/\/[^\s]+)/);
+  const bookmarkUrl = bookmarkUrlMatch ? bookmarkUrlMatch[1] : null;
+  
+  // Extract code snippet
+  const codeMatch = note.content?.match(/Language: (.+)\n\n```[\w]*\n([\s\S]*?)```/);
+  const codeLanguage = codeMatch ? codeMatch[1] : 'text';
+  const codeContent = codeMatch ? codeMatch[2] : null;
   
   // Extract tweet author from title (format: "Tweet by @username")
   const tweetAuthor = isTweet && note.title.includes('@') 
@@ -26,7 +40,6 @@ export default function ViewNoteModal({ note, onClose }: ViewNoteModalProps) {
   const getDisplayContent = () => {
     if (isTweet) {
       // For tweets, extract the actual tweet text
-      // Format is usually: "Tweet URL: ...\n\n[actual tweet text]\n\nSaved on: ..."
       const lines = note.content.split('\n');
       const contentLines: string[] = [];
       let skipNext = false;
@@ -34,31 +47,40 @@ export default function ViewNoteModal({ note, onClose }: ViewNoteModalProps) {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
         
-        // Skip metadata lines
         if (line.startsWith('Tweet URL:') || line.startsWith('Saved on:')) {
           skipNext = true;
           continue;
         }
         
-        // Skip empty lines after metadata
         if (skipNext && !line) {
           continue;
         }
         
         skipNext = false;
         
-        // Collect actual content
         if (line) {
           contentLines.push(line);
         }
       }
       
       return contentLines.join('\n').trim() || note.content;
+    } else if (isBookmark) {
+      // For bookmarks, extract description
+      const parts = note.content.split('\n\n');
+      return parts.length > 1 ? parts[1] : note.content;
     }
     return note.content;
   };
 
   const displayContent = getDisplayContent();
+
+  const handleCopyCode = async () => {
+    if (codeContent) {
+      await navigator.clipboard.writeText(codeContent);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -71,6 +93,14 @@ export default function ViewNoteModal({ note, onClose }: ViewNoteModalProps) {
                 <div className="p-2.5 bg-gradient-to-br from-sky-500 to-blue-500 rounded-xl shadow-lg">
                   <Twitter className="w-6 h-6 text-white" />
                 </div>
+              ) : isCode ? (
+                <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl shadow-lg">
+                  <Code className="w-6 h-6 text-white" />
+                </div>
+              ) : isBookmark ? (
+                <div className="p-2.5 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl shadow-lg">
+                  <Bookmark className="w-6 h-6 text-white" />
+                </div>
               ) : (
                 <div className="p-2.5 bg-gradient-to-br from-primary-500 to-purple-500 rounded-xl shadow-lg">
                   <FileText className="w-6 h-6 text-white" />
@@ -80,11 +110,23 @@ export default function ViewNoteModal({ note, onClose }: ViewNoteModalProps) {
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 via-primary-600 to-purple-600 dark:from-white dark:via-primary-400 dark:to-purple-400 bg-clip-text text-transparent">
                   {note.title}
                 </h2>
-                {isTweet && (
-                  <span className="inline-block mt-1.5 px-3 py-1 bg-gradient-to-r from-sky-100 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 text-sky-700 dark:text-sky-300 rounded-full text-xs font-semibold">
-                    Tweet
-                  </span>
-                )}
+                <div className="flex gap-1.5 mt-1.5">
+                  {isTweet && (
+                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-sky-100 to-blue-100 dark:from-sky-900/30 dark:to-blue-900/30 text-sky-700 dark:text-sky-300 rounded-full text-xs font-semibold">
+                      Tweet
+                    </span>
+                  )}
+                  {isCode && (
+                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-xs font-semibold">
+                      {codeLanguage}
+                    </span>
+                  )}
+                  {isBookmark && (
+                    <span className="inline-block px-3 py-1 bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-900/30 dark:to-red-900/30 text-orange-700 dark:text-orange-300 rounded-full text-xs font-semibold">
+                      Bookmark
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <button
@@ -98,6 +140,21 @@ export default function ViewNoteModal({ note, onClose }: ViewNoteModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
+          {/* Bookmark Link */}
+          {isBookmark && bookmarkUrl && (
+            <div className="mb-4 p-4 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border border-orange-200/50 dark:border-orange-800/50 rounded-xl shadow-sm">
+              <a
+                href={bookmarkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 transition-all group"
+              >
+                <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                <span className="text-sm font-semibold truncate flex-1">{bookmarkUrl}</span>
+              </a>
+            </div>
+          )}
+
           {/* Tweet Link */}
           {isTweet && tweetUrl && (
             <div className="mb-4 p-4 bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20 border border-sky-200/50 dark:border-sky-800/50 rounded-xl shadow-sm">
@@ -115,7 +172,47 @@ export default function ViewNoteModal({ note, onClose }: ViewNoteModalProps) {
 
           {/* Main Content */}
           <div className="mb-6">
-            {isTweet ? (
+            {isCode && codeContent ? (
+              <div className="relative bg-gray-900 rounded-xl border-2 border-emerald-500/30 shadow-2xl overflow-hidden">
+                {/* Code Header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-sm font-semibold text-gray-300">{codeLanguage}</span>
+                  </div>
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-all transform hover:scale-105 text-xs font-semibold"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </>
+                    )}
+                  </button>
+                </div>
+                {/* Code Content */}
+                <div className="p-4 overflow-x-auto">
+                  <pre className="text-sm text-gray-300 font-mono leading-relaxed">
+                    <code>{codeContent}</code>
+                  </pre>
+                </div>
+              </div>
+            ) : isBookmark ? (
+              <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-6 border-2 border-orange-200/50 dark:border-orange-800/50 shadow-xl">
+                <div className="prose dark:prose-invert max-w-none">
+                  <p className="text-gray-700 dark:text-gray-300 text-base leading-relaxed whitespace-pre-wrap">
+                    {displayContent}
+                  </p>
+                </div>
+              </div>
+            ) : isTweet ? (
               <div className="bg-gradient-to-br from-sky-50 to-blue-50 dark:from-sky-900/20 dark:to-blue-900/20 rounded-xl p-6 border-2 border-sky-200/50 dark:border-sky-800/50 shadow-xl">
                 {/* Tweet Header */}
                 {tweetAuthor && (

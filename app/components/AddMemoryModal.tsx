@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileText, Twitter, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, FileText, Twitter, Loader2, CheckCircle, AlertCircle, Code, Bookmark } from 'lucide-react';
 import { Note } from '@/types';
 
 interface AddMemoryModalProps {
@@ -10,7 +10,7 @@ interface AddMemoryModalProps {
   onSave: () => void;
 }
 
-type TabType = 'note' | 'tweet';
+type TabType = 'note' | 'tweet' | 'code' | 'bookmark';
 
 export default function AddMemoryModal({ note, onClose, onSave }: AddMemoryModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>(note ? 'note' : 'note');
@@ -28,12 +28,63 @@ export default function AddMemoryModal({ note, onClose, onSave }: AddMemoryModal
   const [tweetSuccess, setTweetSuccess] = useState(false);
   const [tweetPreview, setTweetPreview] = useState<any>(null);
 
+  // Code snippet tab state
+  const [codeTitle, setCodeTitle] = useState('');
+  const [codeLanguage, setCodeLanguage] = useState('javascript');
+  const [codeContent, setCodeContent] = useState('');
+  const [codeTags, setCodeTags] = useState('');
+  const [isSavingCode, setIsSavingCode] = useState(false);
+
+  // Bookmark tab state
+  const [bookmarkTitle, setBookmarkTitle] = useState('');
+  const [bookmarkUrl, setBookmarkUrl] = useState('');
+  const [bookmarkDescription, setBookmarkDescription] = useState('');
+  const [bookmarkTags, setBookmarkTags] = useState('');
+  const [isSavingBookmark, setIsSavingBookmark] = useState(false);
+
   useEffect(() => {
     if (note) {
-      setTitle(note.title);
-      setContent(note.content);
-      setTags(note.tags?.join(', ') || '');
-      setActiveTab('note');
+      // Detect note type from tags or content
+      const isCode = note.tags?.includes('code') || note.content?.includes('```');
+      const isBookmark = note.tags?.includes('bookmark') || note.content?.includes('Bookmark URL:');
+      
+      if (isCode) {
+        // Parse code snippet
+        const codeMatch = note.content.match(/Language: (.+)\n\n```[\w]*\n([\s\S]*?)```/);
+        if (codeMatch) {
+          setCodeTitle(note.title);
+          setCodeLanguage(codeMatch[1] || 'javascript');
+          setCodeContent(codeMatch[2] || '');
+          setCodeTags(note.tags?.filter(t => t !== 'code').join(', ') || '');
+          setActiveTab('code');
+        } else {
+          setTitle(note.title);
+          setContent(note.content);
+          setTags(note.tags?.join(', ') || '');
+          setActiveTab('note');
+        }
+      } else if (isBookmark) {
+        // Parse bookmark
+        const urlMatch = note.content.match(/Bookmark URL: (.+)/);
+        const descMatch = note.content.match(/Bookmark URL: .+\n\n([\s\S]*?)(?:\n\nTags:|$)/);
+        if (urlMatch) {
+          setBookmarkTitle(note.title);
+          setBookmarkUrl(urlMatch[1] || '');
+          setBookmarkDescription(descMatch ? descMatch[1].trim() : '');
+          setBookmarkTags(note.tags?.filter(t => t !== 'bookmark').join(', ') || '');
+          setActiveTab('bookmark');
+        } else {
+          setTitle(note.title);
+          setContent(note.content);
+          setTags(note.tags?.join(', ') || '');
+          setActiveTab('note');
+        }
+      } else {
+        setTitle(note.title);
+        setContent(note.content);
+        setTags(note.tags?.join(', ') || '');
+        setActiveTab('note');
+      }
     } else {
       setTitle('');
       setContent('');
@@ -42,6 +93,14 @@ export default function AddMemoryModal({ note, onClose, onSave }: AddMemoryModal
       setTweetPreview(null);
       setTweetError(null);
       setTweetSuccess(false);
+      setCodeTitle('');
+      setCodeLanguage('javascript');
+      setCodeContent('');
+      setCodeTags('');
+      setBookmarkTitle('');
+      setBookmarkUrl('');
+      setBookmarkDescription('');
+      setBookmarkTags('');
     }
   }, [note]);
 
@@ -169,6 +228,96 @@ export default function AddMemoryModal({ note, onClose, onSave }: AddMemoryModal
     }
   };
 
+  // Handle code snippet save
+  const handleSaveCode = async () => {
+    if (!codeTitle.trim() || !codeContent.trim()) {
+      alert('Title and code are required');
+      return;
+    }
+
+    setIsSavingCode(true);
+    try {
+      const tagArray = ['code', codeLanguage, ...codeTags.split(',').map(t => t.trim()).filter(t => t.length > 0)];
+      const content = `Language: ${codeLanguage}\n\n\`\`\`${codeLanguage}\n${codeContent}\n\`\`\``;
+
+      if (note) {
+        await fetch('/api/notes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            noteId: note._id,
+            title: codeTitle,
+            content,
+            tags: tagArray,
+          }),
+        });
+      } else {
+        await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: codeTitle,
+            content,
+            tags: tagArray,
+          }),
+        });
+      }
+
+      onSave();
+      onClose();
+    } catch (error) {
+      console.error('Error saving code snippet:', error);
+      alert('Failed to save code snippet');
+    } finally {
+      setIsSavingCode(false);
+    }
+  };
+
+  // Handle bookmark save
+  const handleSaveBookmark = async () => {
+    if (!bookmarkTitle.trim() || !bookmarkUrl.trim()) {
+      alert('Title and URL are required');
+      return;
+    }
+
+    setIsSavingBookmark(true);
+    try {
+      const tagArray = ['bookmark', ...bookmarkTags.split(',').map(t => t.trim()).filter(t => t.length > 0)];
+      const content = `Bookmark URL: ${bookmarkUrl}\n\n${bookmarkDescription || 'No description provided.'}\n\nTags: ${tagArray.filter(t => t !== 'bookmark').join(', ')}`;
+
+      if (note) {
+        await fetch('/api/notes', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            noteId: note._id,
+            title: bookmarkTitle,
+            content,
+            tags: tagArray,
+          }),
+        });
+      } else {
+        await fetch('/api/notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: bookmarkTitle,
+            content,
+            tags: tagArray,
+          }),
+        });
+      }
+
+      onSave();
+      onClose();
+    } catch (error) {
+      console.error('Error saving bookmark:', error);
+      alert('Failed to save bookmark');
+    } finally {
+      setIsSavingBookmark(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
@@ -188,31 +337,61 @@ export default function AddMemoryModal({ note, onClose, onSave }: AddMemoryModal
 
         {/* Tabs */}
         {!note && (
-          <div className="flex gap-2 px-6 pt-4 border-b border-gray-200/50 dark:border-gray-700/50">
+          <div className="grid grid-cols-4 gap-2 px-6 pt-4 border-b border-gray-200/50 dark:border-gray-700/50">
             <button
               onClick={() => setActiveTab('note')}
-              className={`px-6 py-3 font-semibold text-sm transition-all rounded-t-xl ${
+              className={`px-3 py-2.5 font-semibold text-xs transition-all rounded-t-xl ${
                 activeTab === 'note'
                   ? 'bg-gradient-to-r from-primary-500 to-purple-500 text-white shadow-lg transform scale-105'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Text Note
+              <div className="flex items-center justify-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Text Note</span>
+                <span className="sm:hidden">Note</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab('tweet')}
-              className={`px-6 py-3 font-semibold text-sm transition-all rounded-t-xl ${
+              className={`px-3 py-2.5 font-semibold text-xs transition-all rounded-t-xl ${
                 activeTab === 'tweet'
                   ? 'bg-gradient-to-r from-sky-500 to-blue-500 text-white shadow-lg transform scale-105'
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Twitter className="w-4 h-4" />
-                Save Tweet
+              <div className="flex items-center justify-center gap-1.5">
+                <Twitter className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Save Tweet</span>
+                <span className="sm:hidden">Tweet</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('code')}
+              className={`px-3 py-2.5 font-semibold text-xs transition-all rounded-t-xl ${
+                activeTab === 'code'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg transform scale-105'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <Code className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Code</span>
+                <span className="sm:hidden">Code</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('bookmark')}
+              className={`px-3 py-2.5 font-semibold text-xs transition-all rounded-t-xl ${
+                activeTab === 'bookmark'
+                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg transform scale-105'
+                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100/50 dark:hover:bg-gray-700/50'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-1.5">
+                <Bookmark className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Bookmark</span>
+                <span className="sm:hidden">Link</span>
               </div>
             </button>
           </div>
@@ -365,6 +544,141 @@ export default function AddMemoryModal({ note, onClose, onSave }: AddMemoryModal
               )}
             </>
           )}
+
+          {/* Code Snippet Tab */}
+          {activeTab === 'code' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={codeTitle}
+                  onChange={(e) => setCodeTitle(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-900 dark:text-white shadow-sm transition-all"
+                  placeholder="e.g., React Hook Example"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Language
+                </label>
+                <select
+                  value={codeLanguage}
+                  onChange={(e) => setCodeLanguage(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-900 dark:text-white shadow-sm transition-all"
+                >
+                  <option value="javascript">JavaScript</option>
+                  <option value="typescript">TypeScript</option>
+                  <option value="python">Python</option>
+                  <option value="java">Java</option>
+                  <option value="cpp">C++</option>
+                  <option value="c">C</option>
+                  <option value="csharp">C#</option>
+                  <option value="go">Go</option>
+                  <option value="rust">Rust</option>
+                  <option value="php">PHP</option>
+                  <option value="ruby">Ruby</option>
+                  <option value="swift">Swift</option>
+                  <option value="kotlin">Kotlin</option>
+                  <option value="html">HTML</option>
+                  <option value="css">CSS</option>
+                  <option value="sql">SQL</option>
+                  <option value="bash">Bash</option>
+                  <option value="json">JSON</option>
+                  <option value="yaml">YAML</option>
+                  <option value="markdown">Markdown</option>
+                  <option value="text">Plain Text</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Code
+                </label>
+                <textarea
+                  value={codeContent}
+                  onChange={(e) => setCodeContent(e.target.value)}
+                  rows={15}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-gray-900 text-gray-100 font-mono text-sm resize-none shadow-sm transition-all"
+                  placeholder="Paste your code here..."
+                  style={{ fontFamily: 'Monaco, Menlo, "Ubuntu Mono", Consolas, "source-code-pro", monospace' }}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={codeTags}
+                  onChange={(e) => setCodeTags(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-900 dark:text-white shadow-sm transition-all"
+                  placeholder="react, hooks, example"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Bookmark Tab */}
+          {activeTab === 'bookmark' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={bookmarkTitle}
+                  onChange={(e) => setBookmarkTitle(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-900 dark:text-white shadow-sm transition-all"
+                  placeholder="e.g., Awesome Article Title"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  URL
+                </label>
+                <input
+                  type="url"
+                  value={bookmarkUrl}
+                  onChange={(e) => setBookmarkUrl(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-900 dark:text-white shadow-sm transition-all"
+                  placeholder="https://example.com/article"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Description (optional)
+                </label>
+                <textarea
+                  value={bookmarkDescription}
+                  onChange={(e) => setBookmarkDescription(e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-900 dark:text-white resize-none shadow-sm transition-all"
+                  placeholder="Add notes or description about this bookmark..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={bookmarkTags}
+                  onChange={(e) => setBookmarkTags(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300/50 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm text-gray-900 dark:text-white shadow-sm transition-all"
+                  placeholder="article, tutorial, web-dev"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-900/50">
@@ -409,6 +723,44 @@ export default function AddMemoryModal({ note, onClose, onSave }: AddMemoryModal
                 <>
                   <CheckCircle className="w-4 h-4" />
                   Save Tweet
+                </>
+              )}
+            </button>
+          )}
+          {activeTab === 'code' && (
+            <button
+              onClick={handleSaveCode}
+              disabled={isSavingCode}
+              className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2 font-semibold"
+            >
+              {isSavingCode ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  {note ? 'Update' : 'Save'} Code
+                </>
+              )}
+            </button>
+          )}
+          {activeTab === 'bookmark' && (
+            <button
+              onClick={handleSaveBookmark}
+              disabled={isSavingBookmark}
+              className="px-6 py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transition-all transform hover:scale-105 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center gap-2 font-semibold"
+            >
+              {isSavingBookmark ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4" />
+                  {note ? 'Update' : 'Save'} Bookmark
                 </>
               )}
             </button>
