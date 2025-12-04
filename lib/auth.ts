@@ -69,13 +69,20 @@ export async function registerUser(email: string, password: string): Promise<{ u
   // Hash password
   const passwordHash = await hashPassword(password);
 
-  // Generate a proper UUID for user ID
-  // We'll use email hash for lookup, but store with proper UUID
-  const userId = randomUUID();
-  
-  // Create email hash for lookup (stored separately in the account)
+  // Generate a deterministic user ID from email hash (for easy lookup)
+  // Convert email hash to valid UUID v4 format for Nillion compatibility
   const crypto = await import('node:crypto');
   const emailHash = crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
+  
+  // Convert to valid UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  // Where 4 is version and y is 8, 9, a, or b (variant)
+  const userId = [
+    emailHash.substring(0, 8),
+    emailHash.substring(8, 12),
+    '4' + emailHash.substring(13, 16), // Version 4 (4 chars total: '4' + 3 hex)
+    ((parseInt(emailHash.substring(16, 17), 16) & 0x3) | 0x8).toString(16) + emailHash.substring(17, 20), // Variant: 8, 9, a, or b (4 chars total)
+    emailHash.substring(20, 32),
+  ].join('-');
   
   const now = new Date().toISOString();
 
@@ -115,6 +122,7 @@ export async function registerUser(email: string, password: string): Promise<{ u
   const delegationToken = await createDelegation(builder, builderSigner, builderDidObject);
 
   // Store in owned collection (builder owns the data)
+  // Note: Even if collection is standard, including owner/ACL won't hurt
   await systemUser.createData({
     owner: builderDid,
     acl: {
@@ -140,16 +148,22 @@ export async function registerUser(email: string, password: string): Promise<{ u
  * Authenticate a user and return their user signer
  */
 export async function authenticateUser(email: string, password: string): Promise<{ userId: string; userDid: string; userSigner: Signer }> {
+  console.log(`authenticateUser: Attempting to authenticate user: ${email}`);
   const userAccount = await findUserByEmail(email);
   if (!userAccount) {
+    console.error(`authenticateUser: ❌ User not found: ${email}`);
     throw new Error('Invalid email or password');
   }
 
+  console.log(`authenticateUser: ✅ User found, verifying password...`);
   // Verify password
   const isValid = await verifyPassword(password, userAccount.passwordHash);
   if (!isValid) {
+    console.error(`authenticateUser: ❌ Password verification failed for: ${email}`);
     throw new Error('Invalid email or password');
   }
+  
+  console.log(`authenticateUser: ✅ Password verified successfully`);
 
   // Create user signer from stored private key
   const userSigner = Signer.fromPrivateKey(userAccount.userSignerPrivateKey);
@@ -168,89 +182,23 @@ export async function authenticateUser(email: string, password: string): Promise
  * Uses email hash as document ID for direct lookup
  */
 export async function findUserByEmail(email: string): Promise<UserAccount | null> {
+  console.log(`findUserByEmail: Looking for user with email: ${email}`);
   try {
-    const { builder } = await getNillionClients();
-
-    // Ensure users collection exists
-    await ensureUsersCollection(builder);
-
-    // Generate email hash for lookup
+    // Generate deterministic user ID from email (same as registration)
     const crypto = await import('node:crypto');
     const emailHash = crypto.createHash('sha256').update(email.toLowerCase().trim()).digest('hex');
-
-    // We can't directly query by email, so we need to list all users and find by email
-    const { SecretVaultUserClient } = await import('@nillion/secretvaults');
-    const { builderSigner } = await getNillionClients();
+    const userId = [
+      emailHash.substring(0, 8),
+      emailHash.substring(8, 12),
+      '4' + emailHash.substring(13, 16), // Version 4 (4 chars total: '4' + 3 hex)
+      ((parseInt(emailHash.substring(16, 17), 16) & 0x3) | 0x8).toString(16) + emailHash.substring(17, 20), // Variant: 8, 9, a, or b (4 chars total)
+      emailHash.substring(20, 32),
+    ].join('-');
     
-    const systemUser = await SecretVaultUserClient.from({
-      signer: builderSigner,
-      baseUrls: (await import('./config')).nillionConfig.NILDB_NODES,
-      blindfold: {
-        operation: 'store',
-      },
-    });
-
-    // Create delegation token for listing
-    const builderDidObject = await builderSigner.getDid();
-    const delegationToken = await createDelegation(builder, builderSigner, builderDidObject);
-
-    // List all user data references
-    const references = await systemUser.listDataReferences({
-      auth: {
-        delegation: delegationToken,
-      },
-    });
-
-    // Search through all users in the users collection
-    for (const ref of references.data || []) {
-      if (ref.collection === USERS_COLLECTION_ID) {
-        try {
-          // Read user by document ID
-          const result = await systemUser.readData({
-            collection: USERS_COLLECTION_ID,
-            document: ref.document,
-          }, {
-            auth: {
-              delegation: delegationToken,
-            },
-          });
-
-          const account = result.data as unknown as UserAccount & { 
-            userSignerPrivateKey?: { '%allot'?: string };
-            emailHash?: string;
-          };
-          
-          // Check if this is the user we're looking for
-          if (account.email?.toLowerCase() === email.toLowerCase().trim()) {
-            // Handle encrypted private key
-            let privateKey = '';
-            if (account.userSignerPrivateKey) {
-              if (typeof account.userSignerPrivateKey === 'object' && '%allot' in account.userSignerPrivateKey) {
-                // This should be decrypted by the SDK, but handle both cases
-                privateKey = (account.userSignerPrivateKey as any).value || account.userSignerPrivateKey['%allot'] || '';
-              } else if (typeof account.userSignerPrivateKey === 'string') {
-                privateKey = account.userSignerPrivateKey;
-              }
-            }
-
-            return {
-              _id: account._id,
-              email: account.email,
-              passwordHash: account.passwordHash,
-              userSignerPrivateKey: privateKey,
-              createdAt: account.createdAt,
-              updatedAt: account.updatedAt,
-            };
-          }
-        } catch (readError: any) {
-          // Skip errors for individual documents, continue searching
-          continue;
-        }
-      }
-    }
-
-    // User not found
-    return null;
+    console.log(`findUserByEmail: Generated userId from email: ${userId}`);
+    
+    // Use getUserById to read directly by ID (avoids listDataReferences issues)
+    return await getUserById(userId);
   } catch (error: any) {
     // Handle errors gracefully
     if (error.errors && Array.isArray(error.errors)) {
@@ -312,6 +260,11 @@ export async function getUserById(userId: string): Promise<UserAccount | null> {
 
     await builder.refreshRootToken();
     
+    // For owned collections, we need to use the builder's identity as the user client
+    // This allows us to read data owned by the builder
+    const builderDidString = builderDidObject.didString;
+    console.log(`getUserById: Using builder DID: ${builderDidString.substring(0, 30)}...`);
+    
     const systemUser = await SecretVaultUserClient.from({
       signer: builderSigner,
       baseUrls: nillionConfig.NILDB_NODES,
@@ -321,25 +274,48 @@ export async function getUserById(userId: string): Promise<UserAccount | null> {
     });
 
     // Create delegation token for reading
+    // For owned collections, we need to create a delegation from the builder to itself
     console.log('getUserById: Creating delegation token...');
+    
+    // Try creating delegation with builder's DID as both issuer and audience
     const delegationToken = await Builder.delegationFrom(builder.rootToken)
       .command('/nil/db/data/read')
-      .audience(builderDidObject)
+      .audience(builderDidObject) // Builder delegates to itself
       .expiresAt(Date.now() + 3600 * 1000)
       .sign(builderSigner);
     const delegationTokenString = Codec.serializeBase64Url(delegationToken);
-    console.log('getUserById: Delegation token created');
+    console.log(`getUserById: Delegation token created (builder DID: ${builderDidString.substring(0, 20)}...)`);
 
     console.log(`getUserById: Reading user data for document: ${userId}`);
-    const result = await systemUser.readData({
-      collection: USERS_COLLECTION_ID,
-      document: userId,
-    }, {
-      auth: {
-        delegation: delegationTokenString,
-      },
-    });
-    console.log('getUserById: User data read successfully');
+    
+    // Try reading without delegation first (builder owns the data in owned collection)
+    let result;
+    try {
+      result = await systemUser.readData({
+        collection: USERS_COLLECTION_ID,
+        document: userId,
+      });
+      console.log('getUserById: User data read successfully (no delegation)');
+    } catch (noDelegationError: any) {
+      console.log('getUserById: Reading without delegation failed, trying with delegation...');
+      // If that fails, try with delegation token
+      try {
+        result = await systemUser.readData({
+          collection: USERS_COLLECTION_ID,
+          document: userId,
+        }, {
+          auth: {
+            delegation: delegationTokenString,
+          },
+        });
+        console.log('getUserById: User data read successfully (with delegation)');
+      } catch (delegationError: any) {
+        console.error('getUserById: Both read attempts failed');
+        console.error('getUserById: No delegation error:', noDelegationError.message || noDelegationError);
+        console.error('getUserById: Delegation error:', delegationError.message || delegationError);
+        throw delegationError;
+      }
+    }
 
     const account = result.data as unknown as UserAccount & { userSignerPrivateKey?: { '%allot'?: string } };
     
@@ -376,19 +352,20 @@ async function ensureUsersCollection(builder: SecretVaultBuilderClient): Promise
   try {
     await builder.readCollection(USERS_COLLECTION_ID);
     // Collection exists
+    console.log('✅ Users collection already exists');
     return;
   } catch (error) {
     // Collection doesn't exist, create it
     try {
-      // Use owned collection with empty schema (more flexible)
-      // We'll use the builder's DID as owner so builder can access all users
+      // Use STANDARD collection so builder can query/search users directly
+      // Standard collections allow the builder to read and query all data without delegation
       await builder.createCollection({
         _id: USERS_COLLECTION_ID,
-        type: 'owned', // Owned collection but builder will own all records
+        type: 'standard', // Standard collection - builder can query/search
         name: 'Users Collection',
         schema: {}, // Empty schema for flexibility
       });
-      console.log('✅ Users collection created');
+      console.log('✅ Users collection created as standard collection');
     } catch (createError: any) {
       // Log detailed error for debugging
       console.error('Error creating users collection:');
