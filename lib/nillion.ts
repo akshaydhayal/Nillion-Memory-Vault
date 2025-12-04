@@ -10,7 +10,8 @@ import {
   SecretVaultUserClient,
 } from '@nillion/secretvaults';
 import { nillionConfig } from './config';
-import { getUserSigner } from './user-storage';
+import { getUserSignerForSession } from './user-storage-session';
+import { getSession } from './session';
 
 export interface NillionClients {
   builder: SecretVaultBuilderClient;
@@ -22,20 +23,24 @@ export interface NillionClients {
   userDidObject: any; // DID object for delegation
 }
 
-let cachedClients: NillionClients | null = null;
+// Note: We don't cache clients globally because each session needs its own user identity
+// Clients are created per request based on session
 
 export async function getNillionClients(): Promise<NillionClients> {
-  if (cachedClients) {
-    return cachedClients;
-  }
-
+  // Get session to identify the user
+  const session = await getSession();
+  
+  // Check if we have cached clients for this session
+  // Note: We can't cache across sessions, so we'll always create new clients per session
+  // But we can cache within the same request
+  
   if (!nillionConfig.BUILDER_PRIVATE_KEY) {
     throw new Error('BUILDER_PRIVATE_KEY is required. Please set it in your .env file.');
   }
 
   // Create signers
   const builderSigner = Signer.fromPrivateKey(nillionConfig.BUILDER_PRIVATE_KEY);
-  const userSigner = getUserSigner(); // Use persistent user signer
+  const userSigner = getUserSignerForSession(session.sessionId); // Use session-based user signer
 
   const builderDid = await builderSigner.getDid();
   const userDid = await userSigner.getDid();
@@ -93,7 +98,9 @@ export async function getNillionClients(): Promise<NillionClients> {
     },
   });
 
-  cachedClients = {
+  // Don't cache clients across different sessions
+  // Each session needs its own user identity
+  const clients: NillionClients = {
     builder,
     user,
     builderSigner,
@@ -103,7 +110,7 @@ export async function getNillionClients(): Promise<NillionClients> {
     userDidObject: userDid,
   };
 
-  return cachedClients;
+  return clients;
 }
 
 export async function createDelegation(

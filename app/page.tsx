@@ -17,10 +17,22 @@ export default function Home() {
   const [showQuestion, setShowQuestion] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [sessionInfo, setSessionInfo] = useState<{ message?: string } | null>(null);
 
   useEffect(() => {
     loadNotes();
+    loadSessionInfo();
   }, []);
+
+  const loadSessionInfo = async () => {
+    try {
+      const response = await fetch('/api/session');
+      const data = await response.json();
+      setSessionInfo(data);
+    } catch (error) {
+      console.error('Error loading session info:', error);
+    }
+  };
 
   const loadNotes = async () => {
     setIsLoading(true);
@@ -73,6 +85,9 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium" title={sessionInfo?.message || 'Your notes are private to this session'}>
+                🔐 Private Session
+              </div>
               <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
                 🔒 Encrypted
               </div>

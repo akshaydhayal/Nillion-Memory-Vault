@@ -32,6 +32,9 @@ yarn-error.log*
 # collection ID storage
 .collection-id.json
 
+# session storage
+.sessions/
+
 # vercel
 .vercel
 
