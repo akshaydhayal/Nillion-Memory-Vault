@@ -9,6 +9,7 @@ import SearchPanel from './components/SearchPanel';
 import QuestionPanel from './components/QuestionPanel';
 import SummaryPanel from './components/SummaryPanel';
 import LoginModal from './components/LoginModal';
+import LandingPage from './components/LandingPage';
 import { Note } from '@/types';
 
 export default function Home() {
@@ -113,6 +114,21 @@ export default function Home() {
     loadNotes();
   };
 
+  // Show landing page if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LandingPage onGetStarted={() => setShowLogin(true)} />
+        {showLogin && (
+          <LoginModal
+            onClose={() => setShowLogin(false)}
+            onLogin={handleLogin}
+          />
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       {/* Header */}
@@ -133,28 +149,17 @@ export default function Home() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {isAuthenticated ? (
-                <>
-                  <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium flex items-center gap-1">
-                    <User className="w-3 h-3" />
-                    {userEmail}
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1 transition-colors"
-                  >
-                    <LogOut className="w-3 h-3" />
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setShowLogin(true)}
-                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-                >
-                  Login / Register
-                </button>
-              )}
+              <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium flex items-center gap-1">
+                <User className="w-3 h-3" />
+                {userEmail}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-600 flex items-center gap-1 transition-colors"
+              >
+                <LogOut className="w-3 h-3" />
+                Logout
+              </button>
               <div className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
                 🔒 Encrypted
               </div>
@@ -307,12 +312,6 @@ export default function Home() {
         <SummaryPanel onClose={() => setShowSummary(false)} />
       )}
 
-      {showLogin && (
-        <LoginModal
-          onClose={() => setShowLogin(false)}
-          onLogin={handleLogin}
-        />
-      )}
 
       {viewingNote && (
         <ViewNoteModal
