@@ -2,7 +2,7 @@
 
 import { Note } from '@/types';
 import { format } from 'date-fns';
-import { FileText, Calendar, Tag, Trash2, Edit } from 'lucide-react';
+import { FileText, Calendar, Tag, Trash2, Edit, Twitter } from 'lucide-react';
 import { useState } from 'react';
 
 interface NoteCardProps {
@@ -13,6 +13,9 @@ interface NoteCardProps {
 
 export default function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Check if this is a tweet (has 'tweet' tag or contains tweet URL)
+  const isTweet = note.tags?.includes('tweet') || note.content?.includes('Tweet URL:');
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this note?')) {
@@ -37,10 +40,19 @@ export default function NoteCard({ note, onEdit, onDelete }: NoteCardProps) {
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary-600" />
+          {isTweet ? (
+            <Twitter className="w-5 h-5 text-blue-500" />
+          ) : (
+            <FileText className="w-5 h-5 text-primary-600" />
+          )}
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
             {note.title}
           </h3>
+          {isTweet && (
+            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded text-xs font-medium">
+              Tweet
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <button

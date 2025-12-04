@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, MessageCircle, FileText, Shield, Sparkles, Loader2, LogOut, User } from 'lucide-react';
 import NoteCard from './components/NoteCard';
-import NoteEditor from './components/NoteEditor';
+import AddMemoryModal from './components/AddMemoryModal';
 import SearchPanel from './components/SearchPanel';
 import QuestionPanel from './components/QuestionPanel';
 import SummaryPanel from './components/SummaryPanel';
@@ -13,7 +13,7 @@ import { Note } from '@/types';
 export default function Home() {
   const [notes, setNotes] = useState<Note[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showEditor, setShowEditor] = useState(false);
+  const [showMemoryModal, setShowMemoryModal] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showQuestion, setShowQuestion] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
@@ -85,14 +85,18 @@ export default function Home() {
     }
   };
 
-  const handleNewNote = () => {
+  const handleNewMemory = () => {
+    if (!isAuthenticated) {
+      setShowLogin(true);
+      return;
+    }
     setEditingNote(null);
-    setShowEditor(true);
+    setShowMemoryModal(true);
   };
 
   const handleEditNote = (note: Note) => {
     setEditingNote(note);
-    setShowEditor(true);
+    setShowMemoryModal(true);
   };
 
   const handleDeleteNote = (noteId: string) => {
@@ -158,11 +162,11 @@ export default function Home() {
         {/* Action Buttons */}
         <div className="mb-8 flex flex-wrap gap-3">
           <button
-            onClick={handleNewNote}
+            onClick={handleNewMemory}
             className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 shadow-md hover:shadow-lg"
           >
             <Plus className="w-5 h-5" />
-            New Note
+            Add Memory
           </button>
           <button
             onClick={() => setShowSearch(true)}
@@ -251,11 +255,11 @@ export default function Home() {
               Create your first encrypted note to get started
             </p>
             <button
-              onClick={handleNewNote}
+              onClick={handleNewMemory}
               className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors inline-flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
-              Create First Note
+              Add Your First Memory
             </button>
           </div>
         ) : (
@@ -273,11 +277,11 @@ export default function Home() {
       </main>
 
       {/* Modals */}
-      {showEditor && (
-        <NoteEditor
+      {showMemoryModal && (
+        <AddMemoryModal
           note={editingNote}
           onClose={() => {
-            setShowEditor(false);
+            setShowMemoryModal(false);
             setEditingNote(null);
           }}
           onSave={handleSaveNote}
